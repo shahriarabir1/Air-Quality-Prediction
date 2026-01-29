@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <meta name="theme-color" content="#667eea" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>AQ Forecast - Air Quality Prediction</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: rgba(102, 126, 234, 0.2);
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 15px;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      /* Mobile-first responsive adjustments */
+      @media (min-width: 768px) {
+        body {
+          padding: 20px;
+        }
+      }
+
+      .container {
+        max-width: 1000px;
+        margin: 0 auto;
+      }
+
+      header {
+        text-align: center;
+        color: white;
+        margin-bottom: 20px;
+      }
+
+      header h1 {
+        font-size: 1.8em;
+        margin-bottom: 8px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      header p {
+        font-size: 1em;
+        opacity: 0.9;
+      }
+
+      @media (min-width: 768px) {
+        header {
+          margin-bottom: 40px;
+        }
+        header h1 {
+          font-size: 2.5em;
+          margin-bottom: 10px;
+        }
+        header p {
+          font-size: 1.1em;
+        }
+      }
+
+      .card {
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+
+      @media (min-width: 768px) {
+        .card {
+          padding: 30px;
+          margin-bottom: 30px;
+        }
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #333;
+        font-size: 0.95em;
+      }
+
+      input[type="text"],
+      input[type="number"] {
+        width: 100%;
+        padding: 14px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
+      @media (min-width: 768px) {
+        input[type="text"],
+        input[type="number"] {
+          padding: 12px;
+          font-size: 1em;
+        }
+      }
+
+      input[type="text"]:focus,
+      input[type="number"]:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      @media (max-width: 600px) {
+        .form-row {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 16px 30px;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+        width: 100%;
+        min-height: 48px;
+        touch-action: manipulation;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
+      @media (min-width: 768px) {
+        button {
+          padding: 12px 30px;
+          font-size: 1em;
+        }
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+      }
+
+      button:active {
+        transform: scale(0.98);
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      .loading {
+        display: none;
+        text-align: center;
+        padding: 20px;
+      }
+
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 40px;
+        height: 40px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .result {
+        display: none;
+      }
+
+      .result.show {
+        display: block;
+        animation: slideIn 0.3s ease-out;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .result-header {
+        margin-bottom: 25px;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 15px;
+      }
+
+      .result-header h2 {
+        color: #333;
+        margin-bottom: 5px;
+      }
+
+      .timestamp {
+        color: #666;
+        font-size: 0.9em;
+      }
+
+      .predictions {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 15px;
+        margin-bottom: 25px;
+      }
+
+      @media (min-width: 640px) {
+        .predictions {
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 20px;
+        }
+      }
+
+      .pollutant-card {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+      }
+
+      .pollutant-card.pm10 {
+        background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+      }
+
+      .pollutant-card.pm25 {
+        background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+      }
+
+      .pollutant-card.nox {
+        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+      }
+
+      .aqi-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 30px;
+        border-radius: 8px;
+        text-align: center;
+        color: white;
+      }
+
+      .aqi-label {
+        font-size: 0.95em;
+        opacity: 0.9;
+        margin-bottom: 10px;
+      }
+
+      .aqi-value {
+        font-size: 2.5em;
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+
+      .aqi-category {
+        font-size: 1.1em;
+        font-weight: 600;
+      }
+
+      @media (min-width: 768px) {
+        .aqi-value {
+          font-size: 3.5em;
+        }
+        .aqi-category {
+          font-size: 1.2em;
+        }
+      }
+
+      .pollutant-name {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 0.9em;
+      }
+
+      .pollutant-value {
+        font-size: 2em;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 5px;
+      }
+
+      .pollutant-unit {
+        font-size: 0.8em;
+        color: #666;
+      }
+
+      .weather-section {
+        background: #f5f7fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+
+      .weather-section h3 {
+        margin-bottom: 15px;
+        color: #333;
+      }
+
+      .weather-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+
+      @media (min-width: 640px) {
+        .weather-grid {
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 15px;
+        }
+      }
+
+      .weather-item {
+        background: white;
+        padding: 15px;
+        border-radius: 6px;
+        text-align: center;
+      }
+
+      .weather-label {
+        color: #666;
+        font-size: 0.9em;
+        margin-bottom: 8px;
+      }
+
+      .weather-value {
+        font-size: 1.5em;
+        font-weight: bold;
+        color: #667eea;
+      }
+
+      .error {
+        display: none;
+        background: #fee;
+        color: #c33;
+        padding: 15px;
+        border-radius: 6px;
+        border-left: 4px solid #c33;
+        margin-bottom: 20px;
+      }
+
+      .error.show {
+        display: block;
+      }
+
+      .note {
+        background: #e8f4f8;
+        color: #0066cc;
+        padding: 12px;
+        border-radius: 6px;
+        border-left: 4px solid #0066cc;
+        font-size: 0.9em;
+        margin-top: 20px;
+      }
+
+      .location-info {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        background: #f5f7fa;
+        padding: 12px;
+        border-radius: 8px;
+        margin-top: 15px;
+        font-size: 0.9em;
+      }
+
+      @media (min-width: 640px) {
+        .location-info {
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 15px;
+          padding: 15px;
+          margin-top: 20px;
+          font-size: 1em;
+        }
+      }
+
+      .location-item {
+        text-align: center;
+      }
+
+      .location-label {
+        color: #666;
+        font-size: 0.85em;
+        margin-bottom: 5px;
+      }
+
+      .location-value {
+        font-weight: bold;
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>🌍 AQ Forecast</h1>
+        <p>Real-time Air Quality Prediction</p>
+      </header>
+
+      <div class="card">
+        <h2>Enter Location Details</h2>
+        <form id="forecastForm">
+          <div class="form-group">
+            <label for="placeId">Area/Place Name *</label>
+            <input
+              type="text"
+              id="placeId"
+              name="placeId"
+              placeholder="e.g., Agrabad, New York, London"
+              required
+            />
+            <small style="color: #666; margin-top: 5px; display: block"
+              >Just enter the area name, coordinates will be found
+              automatically</small
+            >
+          </div>
+
+          <button type="submit" id="submitBtn">Get Forecast</button>
+        </form>
+      </div>
+
+      <div id="errorMsg" class="error"></div>
+
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Loading forecast data...</p>
+      </div>
+
+      <div id="result" class="result">
+        <div class="card">
+          <div class="result-header">
+            <h2>Air Quality Forecast</h2>
+            <div class="timestamp" id="timestamp"></div>
+          </div>
+
+          <div class="location-info">
+            <div class="location-item">
+              <div class="location-label">Location</div>
+              <div class="location-value" id="resultPlace"></div>
+            </div>
+            <div class="location-item">
+              <div class="location-label">Country</div>
+              <div class="location-value" id="resultCountry"></div>
+            </div>
+            <div class="location-item">
+              <div class="location-label">Latitude</div>
+              <div class="location-value" id="resultLat"></div>
+            </div>
+            <div class="location-item">
+              <div class="location-label">Longitude</div>
+              <div class="location-value" id="resultLng"></div>
+            </div>
+          </div>
+
+          <div style="margin-top: 25px">
+            <h3>Weather Conditions</h3>
+            <div class="weather-grid" id="weatherGrid"></div>
+          </div>
+
+          <div style="margin-top: 25px">
+            <h3>Air Quality Index (AQI)</h3>
+            <div id="aqiContainer" style="margin-bottom: 25px"></div>
+          </div>
+
+          <div style="margin-top: 25px">
+            <h3>Pollutant Predictions</h3>
+            <div class="predictions" id="predictions"></div>
+          </div>
+
+          <div class="note">
+            <strong>Note:</strong> Predictions are based on current weather data
+            from Open-Meteo. The model keeps a rolling 48-hour buffer per
+            location for more accurate forecasting.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_URL = "http://127.0.0.1:8000";
+
+      document
+        .getElementById("forecastForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const placeId = document.getElementById("placeId").value;
+
+          await fetchForecast(placeId);
+        });
+
+      async function fetchForecast(placeId) {
+        const errorMsg = document.getElementById("errorMsg");
+        const loading = document.getElementById("loading");
+        const result = document.getElementById("result");
+        const submitBtn = document.getElementById("submitBtn");
+
+        errorMsg.classList.remove("show");
+        errorMsg.textContent = "";
+        result.classList.remove("show");
+        loading.style.display = "block";
+        submitBtn.disabled = true;
+
+        try {
+          const response = await fetch(`${API_URL}/predict`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              place_id: placeId,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(
+              `API Error: ${response.status} ${response.statusText}`
+            );
+          }
+
+          const data = await response.json();
+          displayForecast(data);
+        } catch (error) {
+          console.error("Error:", error);
+          errorMsg.textContent = `Error: ${error.message}. Make sure the API server is running on ${API_URL}`;
+          errorMsg.classList.add("show");
+          result.classList.remove("show");
+        } finally {
+          loading.style.display = "none";
+          submitBtn.disabled = false;
+        }
+      }
+
+      function displayForecast(data) {
+        const result = document.getElementById("result");
+        const timestamp = document.getElementById("timestamp");
+        const resultPlace = document.getElementById("resultPlace");
+        const resultCountry = document.getElementById("resultCountry");
+        const resultLat = document.getElementById("resultLat");
+        const resultLng = document.getElementById("resultLng");
+        const weatherGrid = document.getElementById("weatherGrid");
+        const aqiContainer = document.getElementById("aqiContainer");
+        const predictions = document.getElementById("predictions");
+
+        // Set timestamp
+        const date = new Date(data.timestamp_utc);
+        timestamp.textContent =
+          date.toLocaleString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            timeZone: "UTC",
+          }) + " UTC";
+
+        // Set location info
+        resultPlace.textContent = data.location_name || data.place_id;
+        resultCountry.textContent = data.country || "N/A";
+        resultLat.textContent = data.lat.toFixed(4);
+        resultLng.textContent = data.lng.toFixed(4);
+
+        // Display AQI
+        aqiContainer.innerHTML = `
+                <div class="aqi-card">
+                    <div class="aqi-label">Air Quality Index</div>
+                    <div class="aqi-value">${data.aqi.toFixed(1)}</div>
+                    <div class="aqi-category">${data.aqi_category}</div>
+                </div>
+            `;
+
+        // Display weather
+        const met = data.met;
+        weatherGrid.innerHTML = `
+                <div class="weather-item">
+                    <div class="weather-label">Temperature</div>
+                    <div class="weather-value">${met.Temp_AGRABAD.toFixed(
+                      1
+                    )}°C</div>
+                </div>
+                <div class="weather-item">
+                    <div class="weather-label">Humidity</div>
+                    <div class="weather-value">${met.RH_AGRABAD.toFixed(
+                      0
+                    )}%</div>
+                </div>
+                <div class="weather-item">
+                    <div class="weather-label">Wind Speed</div>
+                    <div class="weather-value">${met.WS_AGRABAD.toFixed(
+                      1
+                    )} km/h</div>
+                </div>
+                <div class="weather-item">
+                    <div class="weather-label">Rain</div>
+                    <div class="weather-value">${
+                      met.Rain_AGRABAD === 1 ? "Yes" : "No"
+                    }</div>
+                </div>
+            `;
+
+        // Display predictions
+        const pred = data.prediction;
+        predictions.innerHTML = `
+                <div class="pollutant-card pm10">
+                    <div class="pollutant-name">PM 10</div>
+                    <div class="pollutant-value">${pred.PM10_AGRABAD.toFixed(
+                      2
+                    )}</div>
+                    <div class="pollutant-unit">μg/m³</div>
+                </div>
+                <div class="pollutant-card pm25">
+                    <div class="pollutant-name">PM 2.5</div>
+                    <div class="pollutant-value">${pred[
+                      "PM2.5_AGRABAD"
+                    ].toFixed(2)}</div>
+                    <div class="pollutant-unit">μg/m³</div>
+                </div>
+                <div class="pollutant-card nox">
+                    <div class="pollutant-name">NOx</div>
+                    <div class="pollutant-value">${pred.NOX_AGRABAD.toFixed(
+                      2
+                    )}</div>
+                    <div class="pollutant-unit">ppb</div>
+                </div>
+            `;
+
+        result.classList.add("show");
+      }
+
+      // Auto-fill with example coordinates for Agrabad when page loads
+      window.addEventListener("load", () => {
+        document.getElementById("placeId").value = "Agrabad";
+      });
+    </script>
+  </body>
+</html>

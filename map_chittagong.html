@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <meta name="theme-color" content="#667eea" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>Air Quality Monitor - Chittagong</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: rgba(102, 126, 234, 0.2);
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        touch-action: manipulation;
+      }
+
+      /* Header */
+      .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0 15px;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+      }
+
+      @media (min-width: 768px) {
+        .header {
+          padding: 0 20px;
+          height: 70px;
+          gap: 20px;
+        }
+      }
+
+      .header-title {
+        font-size: 1.1em;
+        font-weight: 600;
+        margin: 0;
+        flex: 1;
+      }
+
+      @media (min-width: 768px) {
+        .header-title {
+          font-size: 1.5em;
+        }
+      }
+
+      #map {
+        width: 100%;
+        height: calc(100vh - 56px);
+      }
+
+      @media (min-width: 768px) {
+        #map {
+          height: calc(100vh - 70px);
+        }
+      }
+
+      /* Custom marker styles */
+      .custom-marker {
+        background: none;
+        border: none;
+      }
+
+      .aqi-marker {
+        position: relative;
+        width: 50px;
+        height: 50px;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        cursor: pointer;
+        transition: transform 0.2s;
+        touch-action: manipulation;
+      }
+
+      @media (min-width: 768px) {
+        .aqi-marker {
+          width: 60px;
+          height: 60px;
+        }
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        .aqi-marker:hover {
+          transform: scale(1.1);
+          z-index: 1000;
+        }
+      }
+
+      .aqi-marker-value {
+        font-size: 20px;
+        line-height: 1;
+      }
+
+      @media (min-width: 768px) {
+        .aqi-marker-value {
+          font-size: 24px;
+        }
+      }
+
+      .aqi-marker-label {
+        font-size: 8px;
+        opacity: 0.9;
+        margin-top: 2px;
+      }
+
+      @media (min-width: 768px) {
+        .aqi-marker-label {
+          font-size: 9px;
+        }
+      }
+
+      /* Enhanced popup styles */
+      .leaflet-popup-content-wrapper {
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        padding: 0;
+        overflow: hidden;
+        min-width: 280px;
+        max-width: 90vw;
+      }
+
+      @media (min-width: 640px) {
+        .leaflet-popup-content-wrapper {
+          min-width: 380px;
+          max-width: 420px;
+        }
+      }
+
+      .leaflet-popup-content {
+        margin: 0;
+        width: 100% !important;
+      }
+
+      .leaflet-popup-tip {
+        box-shadow: 0 3px 14px rgba(0,0,0,0.15);
+      }
+
+      .popup-header {
+        padding: 15px;
+        color: white;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      }
+
+      @media (min-width: 768px) {
+        .popup-header {
+          padding: 20px;
+        }
+      }
+
+      .popup-header.good {
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+      }
+
+      .popup-header.satisfactory {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      }
+
+      .popup-header.moderate {
+        background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+      }
+
+      .popup-header.poor {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+      }
+
+      .popup-header.very-poor {
+        background: linear-gradient(135deg, #c21500 0%, #ffc500 100%);
+      }
+
+      .popup-header.severe {
+        background: linear-gradient(135deg, #360033 0%, #0b8793 100%);
+      }
+
+      .location-name {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+
+      @media (min-width: 768px) {
+        .location-name {
+          font-size: 18px;
+        }
+      }
+
+      .aqi-display {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-bottom: 5px;
+      }
+
+      @media (min-width: 768px) {
+        .aqi-display {
+          gap: 10px;
+        }
+      }
+
+      .aqi-number {
+        font-size: 36px;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      @media (min-width: 768px) {
+        .aqi-number {
+          font-size: 48px;
+        }
+      }
+
+      .aqi-label {
+        font-size: 14px;
+        opacity: 0.9;
+      }
+
+      .aqi-category {
+        font-size: 16px;
+        font-weight: 500;
+        opacity: 0.95;
+      }
+
+      .update-time {
+        font-size: 11px;
+        opacity: 0.85;
+        margin-top: 8px;
+      }
+
+      .popup-body {
+        padding: 15px;
+        background: white;
+      }
+
+      @media (min-width: 768px) {
+        .popup-body {
+          padding: 20px;
+        }
+      }
+
+      .pollutants-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        margin-bottom: 15px;
+      }
+
+      @media (min-width: 768px) {
+        .pollutants-grid {
+          gap: 12px;
+          margin-bottom: 20px;
+        }
+      }
+
+      .pollutant-card {
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 6px;
+        text-align: center;
+      }
+
+      @media (min-width: 768px) {
+        .pollutant-card {
+          padding: 12px;
+          border-radius: 8px;
+        }
+      }
+
+      .pollutant-name {
+        font-size: 11px;
+        color: #6c757d;
+        margin-bottom: 6px;
+        font-weight: 500;
+      }
+
+      .pollutant-value {
+        font-size: 20px;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 2px;
+      }
+
+      .pollutant-unit {
+        font-size: 10px;
+        color: #6c757d;
+      }
+
+      .chart-section {
+        margin-top: 20px;
+      }
+
+      .chart-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 12px;
+      }
+
+      .chart-container {
+        position: relative;
+        height: 120px;
+        margin-bottom: 20px;
+      }
+
+      .weather-info {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 10px;
+        padding-top: 15px;
+        border-top: 1px solid #e9ecef;
+      }
+
+      .weather-item {
+        text-align: center;
+      }
+
+      .weather-label {
+        font-size: 10px;
+        color: #6c757d;
+        margin-bottom: 4px;
+      }
+
+      .weather-value {
+        font-size: 14px;
+        font-weight: 600;
+        color: #2c3e50;
+      }
+
+      /* Loading overlay */
+      .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.95);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+      }
+
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 60px;
+        height: 60px;
+        animation: spin 1s linear infinite;
+        margin-bottom: 20px;
+      }
+
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      .loading-text {
+        font-size: 16px;
+        color: #667eea;
+        font-weight: 500;
+      }
+
+      /* Info panel */
+      .info-panel {
+        position: absolute;
+        top: 90px;
+        right: 20px;
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        max-width: 320px;
+        max-height: calc(100vh - 110px);
+        overflow-y: auto;
+      }
+
+      .info-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 10px;
+      }
+
+      .info-subtitle {
+        font-size: 13px;
+        color: #6c757d;
+        margin-bottom: 15px;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+        font-size: 12px;
+      }
+
+      .legend-color {
+        width: 30px;
+        height: 20px;
+        border-radius: 4px;
+      }
+
+      .legend-label {
+        flex: 1;
+      }
+
+      .refresh-btn {
+        margin-top: 15px;
+        width: 100%;
+        padding: 10px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: transform 0.2s;
+      }
+
+      .refresh-btn:hover {
+        transform: translateY(-2px);
+      }
+
+      .refresh-btn:active {
+        transform: translateY(0);
+      }
+
+      /* Hamburger Menu Button */
+      .menu-toggle {
+        position: relative;
+        z-index: 2000;
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        padding: 12px 15px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        width: 50px;
+        height: 50px;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .menu-toggle:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: scale(1.05);
+      }
+
+      .menu-toggle span {
+        width: 25px;
+        height: 3px;
+        background: white;
+        border-radius: 2px;
+        transition: all 0.3s;
+      }
+
+      .menu-toggle.active span:nth-child(1) {
+        transform: rotate(45deg) translate(6px, 6px);
+      }
+
+      .menu-toggle.active span:nth-child(2) {
+        opacity: 0;
+      }
+
+      .menu-toggle.active span:nth-child(3) {
+        transform: rotate(-45deg) translate(6px, -6px);
+      }
+
+      /* Search Sidebar */
+      .search-sidebar {
+        position: fixed;
+        top: 0;
+        left: -400px;
+        width: 400px;
+        height: 100vh;
+        background: white;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        z-index: 1500;
+        transition: left 0.3s ease-in-out;
+        overflow-y: auto;
+      }
+
+      .search-sidebar.active {
+        left: 0;
+      }
+
+      .sidebar-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 25px 20px;
+      }
+
+      .sidebar-header h2 {
+        font-size: 1.5em;
+        margin-bottom: 5px;
+      }
+
+      .sidebar-header p {
+        font-size: 0.9em;
+        opacity: 0.9;
+      }
+
+      .search-section {
+        padding: 20px;
+        border-bottom: 1px solid #e0e0e0;
+      }
+
+      .search-section label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: 600;
+        color: #333;
+      }
+
+      .search-box {
+        display: flex;
+        gap: 10px;
+      }
+
+      .search-input {
+        flex: 1;
+        padding: 12px;
+        border: 2px solid #e0e0e0;
+        border-radius: 6px;
+        font-size: 1em;
+        transition: border-color 0.3s;
+      }
+
+      .search-input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .search-btn-sidebar {
+        padding: 12px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: transform 0.2s;
+      }
+
+      .search-btn-sidebar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+      }
+
+      .search-btn-sidebar:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+
+      .search-results {
+        padding: 20px;
+      }
+
+      .result-card {
+        display: none;
+      }
+
+      .result-card.show {
+        display: block;
+        animation: slideDown 0.3s ease-out;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .result-info {
+        background: #f5f7fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+      }
+
+      .result-info h3 {
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 1.2em;
+      }
+
+      .result-details {
+        font-size: 0.9em;
+        color: #666;
+        line-height: 1.6;
+      }
+
+      .aqi-result-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        margin-bottom: 15px;
+      }
+
+      .aqi-result-value {
+        font-size: 3em;
+        font-weight: bold;
+        margin: 10px 0;
+      }
+
+      .pollutants-result {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+        margin-top: 15px;
+      }
+
+      .pollutant-result-item {
+        background: #f8f9fa;
+        padding: 10px;
+        border-radius: 6px;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .sidebar-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1400;
+        display: none;
+        transition: opacity 0.3s;
+      }
+
+      .sidebar-overlay.active {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Header -->
+    <div class="header">
+      <!-- Hamburger Menu Toggle -->
+      <button class="menu-toggle" id="menuToggle" onclick="toggleSidebar()">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <h1 class="header-title">Chittagong University of Engineering and Technology</h1>
+    </div>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+    <!-- Search Sidebar -->
+    <div class="search-sidebar" id="searchSidebar">
+      <div class="sidebar-header">
+        <h2>🌍 Search Location</h2>
+        <p>Find air quality anywhere</p>
+      </div>
+
+      <div class="search-section">
+        <label for="locationSearch">Enter Location Name</label>
+        <div class="search-box">
+          <input
+            type="text"
+            id="locationSearch"
+            class="search-input"
+            placeholder="e.g., Dhaka, London..."
+          />
+          <button class="search-btn-sidebar" id="searchBtn" onclick="searchLocation()">Search</button>
+        </div>
+      </div>
+
+      <div class="search-results">
+        <div id="searchLoading" style="display: none; text-align: center; padding: 20px;">
+          <div class="spinner" style="margin: 0 auto;"></div>
+          <p style="color: #667eea; margin-top: 10px;">Searching...</p>
+        </div>
+
+        <div id="searchError" style="display: none; background: #fee; color: #c33; padding: 15px; border-radius: 6px; margin-bottom: 15px;"></div>
+
+        <div id="resultCard" class="result-card">
+          <div class="result-info">
+            <h3 id="resultLocation"></h3>
+            <div class="result-details">
+              <div><strong>Country:</strong> <span id="resultCountry"></span></div>
+              <div><strong>Coordinates:</strong> <span id="resultCoords"></span></div>
+            </div>
+          </div>
+
+          <div class="aqi-result-box" id="aqiResultBox">
+            <div style="font-size: 0.9em; opacity: 0.9;">Air Quality Index</div>
+            <div class="aqi-result-value" id="aqiResultValue">--</div>
+            <div style="font-size: 1.1em; font-weight: 600;" id="aqiResultCategory">--</div>
+          </div>
+
+          <div class="result-info">
+            <h3>Pollutants</h3>
+            <div class="pollutants-result">
+              <div class="pollutant-result-item">
+                <span><strong>PM2.5</strong></span>
+                <span id="resultPm25">--</span>
+              </div>
+              <div class="pollutant-result-item">
+                <span><strong>PM10</strong></span>
+                <span id="resultPm10">--</span>
+              </div>
+              <div class="pollutant-result-item">
+                <span><strong>NOx</strong></span>
+                <span id="resultNox">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay">
+      <div class="spinner"></div>
+      <div class="loading-text">Loading air quality data...</div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="info-panel" id="cuetPanel">
+      <div class="info-title" id="cuetTitle">CUET, Chittagong</div>
+      <div class="info-subtitle" id="cuetSubtitle">Loading data...</div>
+      
+      <div id="cuetAqiDisplay" style="display: none;">
+        <div style="text-align: center; padding: 15px; margin-bottom: 15px; border-radius: 8px;" id="cuetAqiBox">
+          <div style="font-size: 14px; opacity: 0.9; margin-bottom: 5px;">AQI</div>
+          <div style="font-size: 42px; font-weight: 700; line-height: 1;" id="cuetAqiValue">--</div>
+          <div style="font-size: 14px; font-weight: 500; margin-top: 5px;" id="cuetAqiCategory">--</div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px;">
+          <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; text-align: center;">
+            <div style="font-size: 10px; color: #6c757d; margin-bottom: 4px;">PM2.5</div>
+            <div style="font-size: 16px; font-weight: 700; color: #2c3e50;" id="cuetPm25">--</div>
+            <div style="font-size: 9px; color: #6c757d;">µg/m³</div>
+          </div>
+          <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; text-align: center;">
+            <div style="font-size: 10px; color: #6c757d; margin-bottom: 4px;">PM10</div>
+            <div style="font-size: 16px; font-weight: 700; color: #2c3e50;" id="cuetPm10">--</div>
+            <div style="font-size: 9px; color: #6c757d;">µg/m³</div>
+          </div>
+          <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; text-align: center;">
+            <div style="font-size: 10px; color: #6c757d; margin-bottom: 4px;">NOx</div>
+            <div style="font-size: 16px; font-weight: 700; color: #2c3e50;" id="cuetNox">--</div>
+            <div style="font-size: 9px; color: #6c757d;">ppb</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+          <div style="font-size: 12px; font-weight: 600; color: #2c3e50; margin-bottom: 8px;">PM2.5 - 24h</div>
+          <div style="height: 100px;">
+            <canvas id="cuetChartPm25"></canvas>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+          <div style="font-size: 12px; font-weight: 600; color: #2c3e50; margin-bottom: 8px;">PM10 - 24h</div>
+          <div style="height: 100px;">
+            <canvas id="cuetChartPm10"></canvas>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+          <div style="font-size: 12px; font-weight: 600; color: #2c3e50; margin-bottom: 8px;">NOx - 24h</div>
+          <div style="height: 100px;">
+            <canvas id="cuetChartNox"></canvas>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; padding-top: 12px; border-top: 1px solid #e9ecef;">
+          <div style="text-align: center;">
+            <div style="font-size: 10px; color: #6c757d; margin-bottom: 3px;">Temp</div>
+            <div style="font-size: 13px; font-weight: 600; color: #2c3e50;" id="cuetTemp">--</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 10px; color: #6c757d; margin-bottom: 3px;">Humidity</div>
+            <div style="font-size: 13px; font-weight: 600; color: #2c3e50;" id="cuetHumidity">--</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 10px; color: #6c757d; margin-bottom: 3px;">Wind</div>
+            <div style="font-size: 13px; font-weight: 600; color: #2c3e50;" id="cuetWind">--</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 10px; color: #6c757d; margin-bottom: 3px;">Rain</div>
+            <div style="font-size: 13px; font-weight: 600; color: #2c3e50;" id="cuetRain">--</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="refresh-btn" onclick="refreshData()" style="margin-top: 15px;">
+        🔄 Refresh Data
+      </button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      const API_URL = "http://127.0.0.1:8000";
+      
+      // Toggle sidebar function
+      function toggleSidebar() {
+        const sidebar = document.getElementById('searchSidebar');
+        const menuToggle = document.getElementById('menuToggle');
+        const overlay = document.getElementById('sidebarOverlay');
+        
+        sidebar.classList.toggle('active');
+        menuToggle.classList.toggle('active');
+        overlay.classList.toggle('active');
+      }
+
+      // Search location function
+      async function searchLocation() {
+        const locationInput = document.getElementById('locationSearch');
+        const placeName = locationInput.value.trim();
+        
+        if (!placeName) {
+          alert('Please enter a location name');
+          return;
+        }
+
+        const loading = document.getElementById('searchLoading');
+        const error = document.getElementById('searchError');
+        const resultCard = document.getElementById('resultCard');
+        const searchBtn = document.getElementById('searchBtn');
+
+        loading.style.display = 'block';
+        error.style.display = 'none';
+        resultCard.classList.remove('show');
+        searchBtn.disabled = true;
+
+        try {
+          const response = await fetch(`${API_URL}/predict`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              place_id: placeName
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Location not found');
+          }
+
+          const data = await response.json();
+          displaySearchResult(data);
+
+        } catch (err) {
+          error.textContent = '❌ Location not found. Please try another location.';
+          error.style.display = 'block';
+        } finally {
+          loading.style.display = 'none';
+          searchBtn.disabled = false;
+        }
+      }
+
+      // Display search result
+      function displaySearchResult(data) {
+        document.getElementById('resultLocation').textContent = data.location_name || data.place_id;
+        document.getElementById('resultCountry').textContent = data.country || 'N/A';
+        document.getElementById('resultCoords').textContent = `${data.lat.toFixed(4)}, ${data.lng.toFixed(4)}`;
+        
+        const aqiColor = getAQIColor(data.aqi);
+        const aqiBox = document.getElementById('aqiResultBox');
+        aqiBox.style.background = aqiColor;
+        
+        document.getElementById('aqiResultValue').textContent = Math.round(data.aqi);
+        document.getElementById('aqiResultCategory').textContent = data.aqi_category;
+        
+        document.getElementById('resultPm25').textContent = data.prediction["PM2.5_AGRABAD"].toFixed(1) + ' µg/m³';
+        document.getElementById('resultPm10').textContent = data.prediction.PM10_AGRABAD.toFixed(1) + ' µg/m³';
+        document.getElementById('resultNox').textContent = data.prediction.NOX_AGRABAD.toFixed(1) + ' ppb';
+        
+        document.getElementById('resultCard').classList.add('show');
+        
+        // Add marker to map
+        const tempStation = {
+          id: `search_${Date.now()}`,
+          name: data.location_name,
+          lat: data.lat,
+          lng: data.lng
+        };
+        createStationMarker(tempStation, data, true);
+        map.setView([data.lat, data.lng], 10);
+      }
+
+      // Enter key support for search
+      document.addEventListener('DOMContentLoaded', () => {
+        const locationInput = document.getElementById('locationSearch');
+        if (locationInput) {
+          locationInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+              searchLocation();
+            }
+          });
+        }
+      });
+      
+      // Monitoring stations in Chittagong
+      const STATIONS = [
+        {
+          id: "CUET",
+          name: "CUET, Chittagong",
+          searchName: "Chittagong University of Engineering and Technology",
+          lat: 22.464677627619846,
+          lng: 91.97126336273016
+        },
+        {
+          id: "Agrabad",
+          name: "Agrabad, Chittagong",
+          searchName: "Agrabad Chittagong",
+          lat: 22.3323,
+          lng: 91.7976
+        }
+      ];
+
+      let map;
+      let markers = [];
+      let stationData = {};
+
+      // Initialize map
+      function initMap() {
+        // Center on Chittagong
+        map = L.map("map").setView([22.3569, 91.7832], 11);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap contributors",
+          maxZoom: 19,
+        }).addTo(map);
+
+        // Add click event to map
+        map.on('click', async function(e) {
+          const { lat, lng } = e.latlng;
+          console.log('Clicked location - Latitude:', lat, 'Longitude:', lng);
+          await fetchAndDisplayLocation(lat, lng);
+        });
+
+        // Add zoom event to scale markers
+        map.on('zoomend', function() {
+          updateMarkerSizes();
+        });
+      }
+
+      // Update marker sizes based on zoom level
+      function updateMarkerSizes() {
+        const zoom = map.getZoom();
+        const scale = Math.max(0.5, Math.min(1.5, zoom / 12));
+        
+        markers.forEach(marker => {
+          const iconWidth = 40 * scale;
+          const iconHeight = 50 * scale;
+          
+          const markerHtml = createMarkerHTML(marker.aqiValue, marker.stationId);
+          const newIcon = L.divIcon({
+            html: markerHtml,
+            iconSize: [iconWidth, iconHeight],
+            iconAnchor: [iconWidth / 2, iconHeight],
+            popupAnchor: [0, -iconHeight],
+            className: "custom-marker",
+          });
+          
+          marker.setIcon(newIcon);
+        });
+      }
+
+      // Get color based on AQI value
+      function getAQIColor(aqi) {
+        if (aqi <= 50) return "#2ecc71";
+        if (aqi <= 100) return "#f1c40f";
+        if (aqi <= 200) return "#e67e22";
+        if (aqi <= 300) return "#e74c3c";
+        if (aqi <= 400) return "#8b0000";
+        return "#4a0000";
+      }
+
+      function getAQIClass(aqi) {
+        if (aqi <= 50) return "good";
+        if (aqi <= 100) return "satisfactory";
+        if (aqi <= 200) return "moderate";
+        if (aqi <= 300) return "poor";
+        if (aqi <= 400) return "very-poor";
+        return "severe";
+      }
+
+      // Create marker HTML
+      function createMarkerHTML(aqi, label) {
+        const color = getAQIColor(aqi);
+        return `
+          <div class="location-pin" style="position: relative;">
+            <svg width="40" height="50" viewBox="0 0 40 50" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
+              <path d="M20 0C9 0 0 9 0 20c0 15 20 30 20 30s20-15 20-30C40 9 31 0 20 0z" fill="${color}"/>
+              <circle cx="20" cy="20" r="12" fill="white" opacity="0.3"/>
+            </svg>
+            <div style="
+              position: absolute;
+              top: 8px;
+              left: 50%;
+              transform: translateX(-50%);
+              color: white;
+              font-weight: bold;
+              font-size: 11px;
+              text-align: center;
+              width: 24px;
+            ">${Math.round(aqi)}</div>
+          </div>
+        `;
+      }
+
+      // Generate sample historical data for charts
+      function generateHistoricalData(currentValue, hours = 24) {
+        const data = [];
+        const variation = currentValue * 0.3; // 30% variation
+        
+        for (let i = hours; i >= 0; i--) {
+          const timeAgo = new Date(Date.now() - i * 60 * 60 * 1000);
+          const randomVariation = (Math.random() - 0.5) * variation;
+          const value = Math.max(0, currentValue + randomVariation);
+          data.push({
+            time: timeAgo,
+            value: value
+          });
+        }
+        return data;
+      }
+
+      // Create mini chart for popup
+      function createMiniChart(canvasId, data, label, color) {
+        const ctx = document.getElementById(canvasId);
+        if (!ctx) return;
+
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: data.map(d => {
+              const hour = d.time.getHours();
+              return hour + ':00';
+            }),
+            datasets: [{
+              label: label,
+              data: data.map(d => d.value),
+              borderColor: color,
+              backgroundColor: color + '20',
+              borderWidth: 2,
+              fill: true,
+              tension: 0.4,
+              pointRadius: 0,
+              pointHoverRadius: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: false
+              },
+              tooltip: {
+                mode: 'index',
+                intersect: false,
+              }
+            },
+            scales: {
+              x: {
+                display: true,
+                grid: {
+                  display: false
+                },
+                ticks: {
+                  maxTicksLimit: 6,
+                  font: {
+                    size: 9
+                  }
+                }
+              },
+              y: {
+                display: true,
+                grid: {
+                  color: '#e9ecef'
+                },
+                ticks: {
+                  font: {
+                    size: 9
+                  }
+                }
+              }
+            }
+          }
+        });
+      }
+
+      // Create detailed popup content
+      function createPopupContent(station, data, removable = false) {
+        const aqiClass = getAQIClass(data.aqi);
+        const updateTime = new Date(data.timestamp_utc);
+        const timeAgo = Math.floor((Date.now() - updateTime.getTime()) / (1000 * 60));
+        
+        const popupId = `popup-${station.id}`;
+        const closeButton = removable ? `<button class="close-marker-btn" onclick="removeMarker('${station.id}')" style="position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.3); border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 18px; display: flex; align-items: center; justify-content: center; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.5)'" onmouseout="this.style.background='rgba(255,255,255,0.3)'">×</button>` : '';
+        
+        return `
+          <div class="popup-content">
+            <div class="popup-header ${aqiClass}" style="position: relative;">
+              ${closeButton}
+              <div class="location-name">${station.name}</div>
+              <div class="aqi-display">
+                <div class="aqi-number">${Math.round(data.aqi)}</div>
+                <div class="aqi-label">AQI</div>
+              </div>
+              <div class="aqi-category">${data.aqi_category}</div>
+              <div class="update-time">Updated ${timeAgo} minutes ago</div>
+            </div>
+            
+            <div class="popup-body">
+              <div class="pollutants-grid">
+                <div class="pollutant-card">
+                  <div class="pollutant-name">PM2.5</div>
+                  <div class="pollutant-value">${data.prediction["PM2.5_AGRABAD"].toFixed(1)}</div>
+                  <div class="pollutant-unit">µg/m³</div>
+                </div>
+                <div class="pollutant-card">
+                  <div class="pollutant-name">PM10</div>
+                  <div class="pollutant-value">${data.prediction.PM10_AGRABAD.toFixed(1)}</div>
+                  <div class="pollutant-unit">µg/m³</div>
+                </div>
+                <div class="pollutant-card">
+                  <div class="pollutant-name">NOx</div>
+                  <div class="pollutant-value">${data.prediction.NOX_AGRABAD.toFixed(1)}</div>
+                  <div class="pollutant-unit">ppb</div>
+                </div>
+              </div>
+
+              <div class="chart-section">
+                <div class="chart-title">PM2.5 - Past 24 Hours</div>
+                <div class="chart-container">
+                  <canvas id="chart-pm25-${popupId}"></canvas>
+                </div>
+              </div>
+
+              <div class="chart-section">
+                <div class="chart-title">NOx - Past 24 Hours</div>
+                <div class="chart-container">
+                  <canvas id="chart-nox-${popupId}"></canvas>
+                </div>
+              </div>
+
+              <div class="weather-info">
+                <div class="weather-item">
+                  <div class="weather-label">Temp</div>
+                  <div class="weather-value">${data.met.Temp_AGRABAD.toFixed(1)}°C</div>
+                </div>
+                <div class="weather-item">
+                  <div class="weather-label">Humidity</div>
+                  <div class="weather-value">${data.met.RH_AGRABAD.toFixed(0)}%</div>
+                </div>
+                <div class="weather-item">
+                  <div class="weather-label">Wind</div>
+                  <div class="weather-value">${data.met.WS_AGRABAD.toFixed(1)} km/h</div>
+                </div>
+                <div class="weather-item">
+                  <div class="weather-label">Rain</div>
+                  <div class="weather-value">${data.met.Rain_AGRABAD === 1 ? "Yes" : "No"}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Fetch data for a station
+      async function fetchStationData(station) {
+        try {
+          const response = await fetch(`${API_URL}/predict`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              lat: station.lat,
+              lng: station.lng
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to fetch data for ${station.name}`);
+          }
+
+          const data = await response.json();
+          stationData[station.id] = data;
+          return data;
+        } catch (error) {
+          console.error(`Error fetching data for ${station.name}:`, error);
+          return null;
+        }
+      }
+
+      // Remove a marker by ID
+      function removeMarker(markerId) {
+        const markerIndex = markers.findIndex(m => m.markerId === markerId);
+        if (markerIndex !== -1) {
+          const marker = markers[markerIndex];
+          // Only remove if it's marked as removable
+          if (marker.isRemovable) {
+            map.removeLayer(marker);
+            markers.splice(markerIndex, 1);
+            console.log(`Removed marker: ${markerId}`);
+          }
+        }
+      }
+
+      // Fetch and display data for clicked location
+      async function fetchAndDisplayLocation(lat, lng) {
+        try {
+          // Show loading indicator
+          const loadingOverlay = document.getElementById('loadingOverlay');
+          loadingOverlay.style.display = 'flex';
+
+          const response = await fetch(`${API_URL}/predict`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              lat: lat,
+              lng: lng
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to fetch data for location`);
+          }
+
+          const data = await response.json();
+          
+          // Create a temporary station object
+          const tempStation = {
+            id: `custom_${Date.now()}`,
+            name: `Custom Location`,
+            lat: lat,
+            lng: lng
+          };
+
+          // Create marker for this location (removable)
+          createStationMarker(tempStation, data, true);
+          
+          // Open the popup automatically
+          setTimeout(() => {
+            const lastMarker = markers[markers.length - 1];
+            if (lastMarker) {
+              lastMarker.openPopup();
+              
+              // On mobile, ensure popup is visible by adjusting map view
+              if (window.innerWidth <= 768) {
+                map.setView([lat, lng], map.getZoom(), {
+                  animate: true,
+                  pan: { animate: true, duration: 0.5 }
+                });
+              }
+            }
+          }, 100);
+
+          loadingOverlay.style.display = 'none';
+        } catch (error) {
+          console.error("Error fetching data for location:", error);
+          alert('Failed to fetch air quality data for this location. Please try again.');
+          document.getElementById('loadingOverlay').style.display = 'none';
+        }
+      }
+
+      // Create marker for a station
+      function createStationMarker(station, data, removable = false) {
+        const markerHtml = createMarkerHTML(data.aqi, station.id);
+        
+        // Get current zoom level for initial size
+        const zoom = map.getZoom();
+        const scale = Math.max(0.5, Math.min(1.5, zoom / 12));
+        const iconWidth = 40 * scale;
+        const iconHeight = 50 * scale;
+        
+        const customIcon = L.divIcon({
+          html: markerHtml,
+          iconSize: [iconWidth, iconHeight],
+          iconAnchor: [iconWidth / 2, iconHeight],
+          popupAnchor: [0, -iconHeight],
+          className: "custom-marker",
+        });
+
+        const marker = L.marker([station.lat, station.lng], { icon: customIcon })
+          .addTo(map);
+        
+        // Store marker ID and removable status
+        marker.markerId = station.id;
+        marker.isRemovable = removable;
+        marker.aqiValue = data.aqi;
+        marker.stationId = station.id;
+
+        // Only bind popup if it's not CUET station (CUET info is always shown in sidebar)
+        if (station.id !== 'CUET') {
+          const popupContent = createPopupContent(station, data, removable);
+          const popupId = `popup-${station.id}`;
+          
+          marker.bindPopup(popupContent, {
+            maxWidth: 420,
+            className: 'custom-popup'
+          });
+
+          // When popup opens, create the charts
+          marker.on('popupopen', () => {
+            setTimeout(() => {
+              const pm25Data = generateHistoricalData(data.prediction["PM2.5_AGRABAD"]);
+              const noxData = generateHistoricalData(data.prediction.NOX_AGRABAD);
+              
+              createMiniChart(`chart-pm25-${popupId}`, pm25Data, 'PM2.5', '#e74c3c');
+              createMiniChart(`chart-nox-${popupId}`, noxData, 'NOx', '#3498db');
+            }, 100);
+          });
+        }
+
+        markers.push(marker);
+        return marker;
+      }
+
+      // Update CUET panel with data
+      function updateCUETPanel(data) {
+        const aqiColor = getAQIColor(data.aqi);
+        
+        document.getElementById('cuetSubtitle').textContent = 'Real-time monitoring';
+        document.getElementById('cuetAqiDisplay').style.display = 'block';
+        
+        const aqiBox = document.getElementById('cuetAqiBox');
+        aqiBox.style.background = aqiColor;
+        aqiBox.style.color = 'white';
+        
+        document.getElementById('cuetAqiValue').textContent = Math.round(data.aqi);
+        document.getElementById('cuetAqiCategory').textContent = data.aqi_category;
+        
+        document.getElementById('cuetPm25').textContent = data.prediction["PM2.5_AGRABAD"].toFixed(1);
+        document.getElementById('cuetPm10').textContent = data.prediction.PM10_AGRABAD.toFixed(1);
+        document.getElementById('cuetNox').textContent = data.prediction.NOX_AGRABAD.toFixed(1);
+        
+        document.getElementById('cuetTemp').textContent = data.met.Temp_AGRABAD.toFixed(1) + '°C';
+        document.getElementById('cuetHumidity').textContent = data.met.RH_AGRABAD.toFixed(0) + '%';
+        document.getElementById('cuetWind').textContent = data.met.WS_AGRABAD.toFixed(1) + ' km/h';
+        document.getElementById('cuetRain').textContent = data.met.Rain_AGRABAD === 1 ? 'Yes' : 'No';
+        
+        // Generate and display charts
+        const pm25Data = generateHistoricalData(data.prediction["PM2.5_AGRABAD"]);
+        const pm10Data = generateHistoricalData(data.prediction.PM10_AGRABAD);
+        const noxData = generateHistoricalData(data.prediction.NOX_AGRABAD);
+        
+        createMiniChart('cuetChartPm25', pm25Data, 'PM2.5', '#e74c3c');
+        createMiniChart('cuetChartPm10', pm10Data, 'PM10', '#9b59b6');
+        createMiniChart('cuetChartNox', noxData, 'NOx', '#3498db');
+      }
+
+      // Load all station data
+      async function loadAllStations() {
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        
+        try {
+          // Fetch data for all stations
+          const promises = STATIONS.map(station => fetchStationData(station));
+          const results = await Promise.all(promises);
+
+          // Clear existing markers
+          markers.forEach(marker => map.removeLayer(marker));
+          markers = [];
+
+          // Create markers for each station
+          STATIONS.forEach((station, index) => {
+            const data = results[index];
+            if (data) {
+              createStationMarker(station, data);
+              // Update CUET panel if this is CUET station
+              if (station.id === 'CUET') {
+                updateCUETPanel(data);
+              }
+            }
+          });
+
+          loadingOverlay.style.display = 'none';
+        } catch (error) {
+          console.error("Error loading stations:", error);
+          loadingOverlay.querySelector('.loading-text').textContent = 
+            'Error loading data. Please refresh the page.';
+        }
+      }
+
+      // Refresh data
+      async function refreshData() {
+        const btn = document.querySelector('.refresh-btn');
+        btn.disabled = true;
+        btn.textContent = '⏳ Refreshing...';
+        
+        await loadAllStations();
+        
+        btn.disabled = false;
+        btn.textContent = '🔄 Refresh Data';
+      }
+
+      // Initialize
+      window.addEventListener("load", async () => {
+        initMap();
+        await loadAllStations();
+        
+        // Auto-refresh every 5 minutes
+        setInterval(loadAllStations, 5 * 60 * 1000);
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "using_gpu": true,
+  "MAE": 1.6325452583373843,
+  "RMSE": 5.084025779739824,
+  "R2": 0.9942841763033606,
+  "best_params": {
+    "subsample": 1.0,
+    "reg_lambda": 1.5,
+    "reg_alpha": 0.0,
+    "n_estimators": 1200,
+    "min_child_weight": 5,
+    "max_depth": 8,
+    "max_bin": 512,
+    "learning_rate": 0.08,
+    "gamma": 0.5,
+    "colsample_bytree": 0.85
+  }
+}

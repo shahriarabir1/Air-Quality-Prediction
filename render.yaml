@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: aq-forecast-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+    healthCheckPath: /simple
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: PYTHONUNBUFFERED
+        value: 1
+    disk:
+      name: state-store
+      mountPath: /app/state_store
+      sizeGB: 1

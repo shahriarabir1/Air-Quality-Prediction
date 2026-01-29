@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes" />
+    <meta name="theme-color" content="#667eea" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>AQ Forecast - Air Quality Map</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: rgba(102, 126, 234, 0.2);
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        height: 100vh;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+
+      .container {
+        display: flex;
+        height: 100vh;
+      }
+
+      /* Sidebar */
+      .sidebar {
+        width: 100%;
+        max-width: 400px;
+        background: white;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        z-index: 1000;
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        transition: transform 0.3s ease;
+      }
+
+      @media (max-width: 768px) {
+        .sidebar {
+          transform: translateX(-100%);
+        }
+        .sidebar.open {
+          transform: translateX(0);
+        }
+      }
+
+      @media (min-width: 769px) {
+        .sidebar {
+          position: relative;
+        }
+      }
+
+      /* Mobile toggle button */
+      .sidebar-toggle {
+        display: block;
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 1001;
+        background: white;
+        border: none;
+        border-radius: 8px;
+        padding: 12px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        touch-action: manipulation;
+      }
+
+      @media (min-width: 769px) {
+        .sidebar-toggle {
+          display: none;
+        }
+      }
+
+      .sidebar-toggle span {
+        display: block;
+        width: 24px;
+        height: 3px;
+        background: #667eea;
+        margin: 5px 0;
+        border-radius: 2px;
+        transition: 0.3s;
+      }
+      
+      .sidebar-toggle.active span:nth-child(1) {
+        transform: rotate(-45deg) translate(-5px, 6px);
+      }
+      
+      .sidebar-toggle.active span:nth-child(2) {
+        opacity: 0;
+      }
+      
+      .sidebar-toggle.active span:nth-child(3) {
+        transform: rotate(45deg) translate(-5px, -6px);
+      }
+      
+      /* Overlay for mobile */
+      .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+      }
+      
+      @media (max-width: 768px) {
+        .sidebar-overlay.show {
+          display: block;
+        }
+      }
+
+      .sidebar-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+      }
+
+      .sidebar-header h1 {
+        font-size: 1.4em;
+        margin-bottom: 5px;
+      }
+
+      .sidebar-header p {
+        font-size: 0.85em;
+        opacity: 0.9;
+      }
+
+      @media (min-width: 768px) {
+        .sidebar-header {
+          padding: 25px 20px;
+        }
+        .sidebar-header h1 {
+          font-size: 1.8em;
+        }
+        .sidebar-header p {
+          font-size: 0.9em;
+        }
+      }
+
+      .search-section {
+        padding: 15px;
+        border-bottom: 1px solid #e0e0e0;
+      }
+
+      @media (min-width: 768px) {
+        .search-section {
+          padding: 20px;
+        }
+      }
+
+      .search-section label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: 600;
+        color: #333;
+        font-size: 0.95em;
+      }
+
+      .search-box {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      @media (min-width: 640px) {
+        .search-box {
+          flex-direction: row;
+        }
+      }
+
+      input[type="text"] {
+        flex: 1;
+        padding: 14px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 16px;
+        transition: border-color 0.3s;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+
+      @media (min-width: 768px) {
+        input[type="text"] {
+          padding: 12px;
+          font-size: 1em;
+        }
+      }
+
+      input[type="text"]:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .search-btn {
+        padding: 14px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 16px;
+        min-height: 48px;
+        transition: transform 0.2s, box-shadow 0.2s;
+        touch-action: manipulation;
+        -webkit-appearance: none;
+        width: 100%;
+      }
+
+      @media (min-width: 640px) {
+        .search-btn {
+          width: auto;
+          padding: 12px 20px;
+          font-size: 1em;
+        }
+      }
+
+      @media (hover: hover) and (pointer: fine) {
+        .search-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+      }
+
+      .search-btn:active {
+        transform: scale(0.98);
+      }
+
+      .search-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      /* Results Section */
+      .results-section {
+        flex: 1;
+        padding: 15px;
+        overflow-y: auto;
+      }
+
+      @media (min-width: 768px) {
+        .results-section {
+          padding: 20px;
+        }
+      }
+
+      .loading {
+        text-align: center;
+        padding: 40px 20px;
+      }
+
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 20px;
+      }
+
+      @keyframes spin {
+        0% {
+          transform: rotate(0deg);
+        }
+        100% {
+          transform: rotate(360deg);
+        }
+      }
+
+      .result-card {
+        display: none;
+        animation: slideDown 0.3s ease-out;
+      }
+
+      .result-card.show {
+        display: block;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .location-info {
+        background: #f5f7fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+
+      .location-info h2 {
+        color: #333;
+        margin-bottom: 10px;
+        font-size: 1.3em;
+      }
+
+      .location-details {
+        font-size: 0.9em;
+        color: #666;
+        line-height: 1.6;
+      }
+
+      .location-details strong {
+        color: #333;
+      }
+
+      .aqi-box {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 25px;
+        border-radius: 8px;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+
+      .aqi-label {
+        font-size: 0.95em;
+        opacity: 0.9;
+        margin-bottom: 10px;
+      }
+
+      .aqi-value {
+        font-size: 2.5em;
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+
+      .aqi-category {
+        font-size: 1.1em;
+        font-weight: 600;
+      }
+
+      @media (min-width: 768px) {
+        .aqi-value {
+          font-size: 3.5em;
+        }
+        .aqi-category {
+          font-size: 1.2em;
+        }
+      }
+
+      .weather-section {
+        background: #f5f7fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+
+      .weather-section h3 {
+        color: #333;
+        margin-bottom: 15px;
+        font-size: 1.1em;
+      }
+
+      .weather-items {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .weather-item {
+        background: white;
+        padding: 12px;
+        border-radius: 6px;
+        text-align: center;
+      }
+
+      .weather-label {
+        color: #666;
+        font-size: 0.85em;
+        margin-bottom: 5px;
+      }
+
+      .weather-value {
+        color: #667eea;
+        font-weight: bold;
+        font-size: 1.1em;
+      }
+
+      .pollutants-section {
+        background: #f5f7fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+
+      .pollutants-section h3 {
+        color: #333;
+        margin-bottom: 15px;
+        font-size: 1.1em;
+      }
+
+      .pollutant-items {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .pollutant-item {
+        background: white;
+        padding: 12px;
+        border-radius: 6px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .pollutant-name {
+        font-weight: 600;
+        color: #333;
+      }
+
+      .pollutant-value {
+        color: #667eea;
+        font-weight: bold;
+        font-size: 1.1em;
+      }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #c33;
+            display: none;
+        }
+
+        .error.show {
+            display: block;
+        }
+
+        .suggestions-list {
+            margin-top: 15px;
+            background: #f5f7fa;
+            padding: 15px;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .suggestions-list.show {
+            display: block;
+        }
+
+        .suggestions-list h4 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+
+        .suggestion-item {
+            background: white;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-left: 3px solid #667eea;
+        }
+
+        .suggestion-item:hover {
+            background: #e8f0ff;
+            transform: translateX(5px);
+        }
+
+        .suggestion-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .suggestion-details {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 3px;
+        }      .timestamp {
+        font-size: 0.85em;
+        color: #999;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #e0e0e0;
+      }
+
+      /* Map */
+      #map {
+        flex: 1;
+        background: #e4e4e4;
+      }
+
+      .map-controls {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        z-index: 500;
+      }
+
+      .map-button {
+        background: white;
+        border: 2px solid #ddd;
+        padding: 10px 15px;
+        border-radius: 6px;
+        cursor: pointer;
+        margin-bottom: 10px;
+        font-weight: 600;
+        transition: all 0.3s;
+      }
+
+      .map-button:hover {
+        background: #667eea;
+        color: white;
+        border-color: #667eea;
+      }
+
+      @media (max-width: 768px) {
+        .sidebar {
+          width: 100%;
+          max-height: 50vh;
+        }
+
+        #map {
+          flex: 1;
+        }
+
+        .container {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle Sidebar">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+    <div class="container">
+      <!-- Sidebar -->
+      <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+          <h1>🌍 AQ Forecast</h1>
+          <p>Real-time Air Quality Map</p>
+        </div>
+
+        <div class="search-section">
+          <label for="locationSearch">Search Location</label>
+          <div class="search-box">
+            <input
+              type="text"
+              id="locationSearch"
+              placeholder="Enter city name..."
+            />
+            <button class="search-btn" id="searchBtn">Search</button>
+          </div>
+        </div>
+
+            <div id="errorMsg" class="error"></div>
+
+            <div id="suggestionsList" class="suggestions-list">
+                <h4>Did you mean?</h4>
+                <div id="suggestionsContainer"></div>
+            </div>        <div class="results-section">
+          <div id="loading" class="loading" style="display: none">
+            <div class="spinner"></div>
+            <p>Loading forecast...</p>
+          </div>
+
+          <div id="resultCard" class="result-card">
+            <div class="location-info">
+              <h2 id="resultLocation"></h2>
+              <div class="location-details">
+                <div>
+                  <strong>Country:</strong> <span id="resultCountry"></span>
+                </div>
+                <div>
+                  <strong>Latitude:</strong> <span id="resultLat"></span>
+                </div>
+                <div>
+                  <strong>Longitude:</strong> <span id="resultLng"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="aqi-box">
+              <div class="aqi-label">Air Quality Index</div>
+              <div class="aqi-value" id="aqiValue"></div>
+              <div class="aqi-category" id="aqiCategory"></div>
+            </div>
+
+            <div class="weather-section">
+              <h3>Weather Conditions</h3>
+              <div class="weather-items">
+                <div class="weather-item">
+                  <div class="weather-label">Temperature</div>
+                  <div class="weather-value" id="weatherTemp"></div>
+                </div>
+                <div class="weather-item">
+                  <div class="weather-label">Humidity</div>
+                  <div class="weather-value" id="weatherHumidity"></div>
+                </div>
+                <div class="weather-item">
+                  <div class="weather-label">Wind Speed</div>
+                  <div class="weather-value" id="weatherWind"></div>
+                </div>
+                <div class="weather-item">
+                  <div class="weather-label">Rain</div>
+                  <div class="weather-value" id="weatherRain"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pollutants-section">
+              <h3>Pollutant Levels</h3>
+              <div class="pollutant-items">
+                <div class="pollutant-item">
+                  <span class="pollutant-name">PM 10</span>
+                  <span class="pollutant-value" id="pollutantPM10"></span>
+                </div>
+                <div class="pollutant-item">
+                  <span class="pollutant-name">PM 2.5</span>
+                  <span class="pollutant-value" id="pollutantPM25"></span>
+                </div>
+                <div class="pollutant-item">
+                  <span class="pollutant-name">NOx</span>
+                  <span class="pollutant-value" id="pollutantNOx"></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="timestamp" id="timestamp"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Map -->
+      <div id="map"></div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      const API_URL = "http://127.0.0.1:8000";
+      let map;
+      let currentMarker;
+
+      // Initialize map
+      function initMap() {
+        map = L.map("map").setView([20, 0], 2);
+
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          attribution: "© OpenStreetMap contributors",
+          maxZoom: 19,
+        }).addTo(map);
+      }
+
+      // Search button and enter key
+      document.getElementById("searchBtn").addEventListener("click", () => {
+        const location = document.getElementById("locationSearch").value;
+        if (location.trim()) {
+          searchLocation(location);
+        }
+      });
+
+      document
+        .getElementById("locationSearch")
+        .addEventListener("keypress", (e) => {
+          if (e.key === "Enter") {
+            const location = document.getElementById("locationSearch").value;
+            if (location.trim()) {
+              searchLocation(location);
+            }
+          }
+        });
+
+      async function searchLocation(placeName) {
+        const errorMsg = document.getElementById("errorMsg");
+        const suggestionsList = document.getElementById("suggestionsList");
+        const loading = document.getElementById("loading");
+        const resultCard = document.getElementById("resultCard");
+        const searchBtn = document.getElementById("searchBtn");
+
+        errorMsg.classList.remove("show");
+        errorMsg.textContent = "";
+        suggestionsList.classList.remove("show");
+        resultCard.classList.remove("show");
+        loading.style.display = "block";
+        searchBtn.disabled = true;
+
+        try {
+          const response = await fetch(`${API_URL}/predict`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              place_id: placeName,
+            }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            
+            // Check if error has suggestions
+            if (errorData.detail && typeof errorData.detail === "object" && errorData.detail.suggestions) {
+              showLocationNotFound(placeName, errorData.detail.suggestions);
+            } else if (Array.isArray(errorData.detail)) {
+              // Handle validation errors
+              errorMsg.textContent = "Invalid input";
+              errorMsg.classList.add("show");
+            } else {
+              errorMsg.textContent = `Error: ${errorData.detail || "Location not found"}`;
+              errorMsg.classList.add("show");
+            }
+          } else {
+            const data = await response.json();
+            displayResults(data);
+            updateMap(data);
+            
+            // Auto-collapse sidebar on mobile after successful search
+            if (window.innerWidth <= 768) {
+              const sidebar = document.getElementById("sidebar");
+              setTimeout(() => {
+                sidebar.classList.remove("open");
+              }, 800); // Small delay to let user see results briefly
+            }
+          }
+        } catch (error) {
+          console.error("Error:", error);
+          errorMsg.textContent = `Error: ${error.message}`;
+          errorMsg.classList.add("show");
+        } finally {
+          loading.style.display = "none";
+          searchBtn.disabled = false;
+        }
+      }
+
+      function showLocationNotFound(searchTerm, suggestions) {
+        const errorMsg = document.getElementById("errorMsg");
+        const suggestionsList = document.getElementById("suggestionsList");
+        const suggestionsContainer = document.getElementById("suggestionsContainer");
+
+        errorMsg.textContent = `❌ Location "${searchTerm}" not found`;
+        errorMsg.classList.add("show");
+
+        if (suggestions && suggestions.length > 0) {
+          suggestionsContainer.innerHTML = suggestions.map(suggestion => `
+            <div class="suggestion-item" onclick="retrySearch('${suggestion.name}')">
+              <div class="suggestion-name">${suggestion.name}</div>
+              <div class="suggestion-details">
+                ${suggestion.admin1 ? suggestion.admin1 + ", " : ""}${suggestion.country || "Unknown"}
+              </div>
+            </div>
+          `).join("");
+          suggestionsList.classList.add("show");
+        }
+      }
+
+      function retrySearch(locationName) {
+        document.getElementById("locationSearch").value = locationName;
+        searchLocation(locationName);
+      }
+
+      function displayResults(data) {
+        const resultCard = document.getElementById("resultCard");
+
+        // Location info
+        document.getElementById("resultLocation").textContent =
+          data.location_name || data.place_id;
+        document.getElementById("resultCountry").textContent =
+          data.country || "N/A";
+        document.getElementById("resultLat").textContent = data.lat.toFixed(4);
+        document.getElementById("resultLng").textContent = data.lng.toFixed(4);
+
+        // AQI
+        document.getElementById("aqiValue").textContent = data.aqi.toFixed(1);
+        document.getElementById("aqiCategory").textContent = data.aqi_category;
+
+        // Weather
+        const met = data.met;
+        document.getElementById("weatherTemp").textContent =
+          met.Temp_AGRABAD.toFixed(1) + "°C";
+        document.getElementById("weatherHumidity").textContent =
+          met.RH_AGRABAD.toFixed(0) + "%";
+        document.getElementById("weatherWind").textContent =
+          met.WS_AGRABAD.toFixed(1) + " km/h";
+        document.getElementById("weatherRain").textContent =
+          met.Rain_AGRABAD === 1 ? "Yes" : "No";
+
+        // Pollutants
+        const pred = data.prediction;
+        document.getElementById("pollutantPM10").textContent =
+          pred.PM10_AGRABAD.toFixed(2) + " μg/m³";
+        document.getElementById("pollutantPM25").textContent =
+          pred["PM2.5_AGRABAD"].toFixed(2) + " μg/m³";
+        document.getElementById("pollutantNOx").textContent =
+          pred.NOX_AGRABAD.toFixed(2) + " ppb";
+
+        // Timestamp
+        const date = new Date(data.timestamp_utc);
+        document.getElementById("timestamp").textContent =
+          "Last updated: " +
+          date.toLocaleString("en-US", {
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            timeZone: "UTC",
+          }) +
+          " UTC";
+
+        resultCard.classList.add("show");
+        
+        // Scroll to top of results section on mobile
+        if (window.innerWidth <= 768) {
+          resultCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+
+      function updateMap(data) {
+        const lat = data.lat;
+        const lng = data.lng;
+        const aqi = data.aqi;
+
+        // Remove old marker
+        if (currentMarker) {
+          map.removeLayer(currentMarker);
+        }
+
+        // Add new marker with color based on AQI
+        const color = getMarkerColor(aqi);
+        const markerHtml = `
+                <div style="
+                    background: ${color};
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 12px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                    border: 3px solid white;
+                ">
+                    ${aqi.toFixed(0)}
+                </div>
+            `;
+
+        const customIcon = L.divIcon({
+          html: markerHtml,
+          iconSize: [40, 40],
+          className: "custom-marker",
+        });
+
+        currentMarker = L.marker([lat, lng], { icon: customIcon })
+          .addTo(map)
+          .bindPopup(
+            `<b>${data.location_name}</b><br/>AQI: ${aqi.toFixed(1)}<br/>${
+              data.aqi_category
+            }`
+          );
+
+        map.setView([lat, lng], 10);
+      }
+
+      function getMarkerColor(aqi) {
+        if (aqi <= 50) return "#2ecc71"; // Green - Good
+        if (aqi <= 100) return "#f1c40f"; // Yellow - Satisfactory
+        if (aqi <= 200) return "#e67e22"; // Orange - Moderate
+        if (aqi <= 300) return "#e74c3c"; // Red - Poor
+        if (aqi <= 400) return "#8b0000"; // Dark Red - Very Poor
+        return "#4a0000"; // Very Dark Red - Severe
+      }
+
+      // Initialize
+      window.addEventListener("load", () => {
+        initMap();
+        document.getElementById("locationSearch").focus();
+        
+        // Mobile sidebar toggle
+        const sidebarToggle = document.getElementById("sidebarToggle");
+        const sidebar = document.getElementById("sidebar");
+        const overlay = document.getElementById("sidebarOverlay");
+        
+        function toggleSidebar() {
+          const isOpen = sidebar.classList.toggle("open");
+          sidebarToggle.classList.toggle("active", isOpen);
+          if (overlay) {
+            overlay.classList.toggle("show", isOpen);
+          }
+        }
+        
+        function closeSidebar() {
+          sidebar.classList.remove("open");
+          sidebarToggle.classList.remove("active");
+          if (overlay) {
+            overlay.classList.remove("show");
+          }
+        }
+        
+        if (sidebarToggle && sidebar) {
+          sidebarToggle.addEventListener("click", toggleSidebar);
+          
+          // Close sidebar when clicking overlay
+          if (overlay) {
+            overlay.addEventListener("click", closeSidebar);
+          }
+          
+          // Close sidebar when clicking on map (mobile only)
+          if (window.innerWidth <= 768) {
+            map.on('click', closeSidebar);
+          }
+        }
+      });
+    </script>
+  </body>
+</html>

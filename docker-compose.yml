@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  aq-forecast:
+    build: .
+    container_name: aq-forecast-app
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount state_store to persist prediction states
+      - ./state_store:/app/state_store
+    environment:
+      - TZ=UTC
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/simple"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
