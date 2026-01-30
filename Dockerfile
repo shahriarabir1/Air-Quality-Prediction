@@ -38,4 +38,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/simple')" || exit 1
 
 # Run the application with dynamic port support
-CMD uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}
+CMD ["bash", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}"]
