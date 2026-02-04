@@ -1,0 +1,44 @@
+[
+  {
+    "timestamp": "2026-02-03T06:10:38.142576",
+    "location": "test_location_0",
+    "model": {
+      "PM2.5_AGRABAD": 150.0,
+      "PM10_AGRABAD": 220.0,
+      "NOX_AGRABAD": 70.0
+    },
+    "reference": {
+      "pm25": 98.3,
+      "pm10": 152.6,
+      "no2": 48.7
+    }
+  },
+  {
+    "timestamp": "2026-02-03T06:10:38.143580",
+    "location": "test_location_1",
+    "model": {
+      "PM2.5_AGRABAD": 145.0,
+      "PM10_AGRABAD": 210.0,
+      "NOX_AGRABAD": 68.0
+    },
+    "reference": {
+      "pm25": 95.1,
+      "pm10": 148.2,
+      "no2": 47.2
+    }
+  },
+  {
+    "timestamp": "2026-02-03T06:10:38.145591",
+    "location": "test_location_2",
+    "model": {
+      "PM2.5_AGRABAD": 155.0,
+      "PM10_AGRABAD": 230.0,
+      "NOX_AGRABAD": 72.0
+    },
+    "reference": {
+      "pm25": 101.5,
+      "pm10": 157.0,
+      "no2": 50.1
+    }
+  }
+]
