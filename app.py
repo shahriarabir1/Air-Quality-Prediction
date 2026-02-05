@@ -582,19 +582,44 @@ async def store_current_prediction(station_id: str, lat: float, lng: float):
 # DOE API Proxy to avoid mixed content issues (HTTPS -> HTTP)
 DOE_API_URL = "http://180.211.164.219:8080/aqiApi_v1/aqiApiController/markerAQIData/ABCDEFGHIJKLMNOPQdefghijklmnopqrstuvwxyz0123456789"
 
+# Cache for DOE API data
+_doe_cache = {"data": None, "timestamp": None}
+DOE_CACHE_TTL = 300  # 5 minutes cache
+
 @app.get("/api/doe-stations")
 async def proxy_doe_stations():
     """Proxy endpoint for DOE AQI API to avoid mixed content issues"""
+    global _doe_cache
+    
+    # Check cache first
+    now = datetime.now(timezone.utc)
+    if _doe_cache["data"] and _doe_cache["timestamp"]:
+        cache_age = (now - _doe_cache["timestamp"]).total_seconds()
+        if cache_age < DOE_CACHE_TTL:
+            return _doe_cache["data"]
+    
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        # Longer timeout and retry logic
+        async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.get(DOE_API_URL)
             response.raise_for_status()
-            return response.json()
+            data = response.json()
+            # Update cache
+            _doe_cache["data"] = data
+            _doe_cache["timestamp"] = now
+            return data
     except httpx.TimeoutException:
-        raise HTTPException(504, "DOE API request timed out")
+        # Return cached data if available, even if stale
+        if _doe_cache["data"]:
+            return _doe_cache["data"]
+        raise HTTPException(504, "DOE API request timed out and no cached data available")
     except httpx.HTTPError as e:
+        if _doe_cache["data"]:
+            return _doe_cache["data"]
         raise HTTPException(502, f"DOE API error: {str(e)}")
     except Exception as e:
+        if _doe_cache["data"]:
+            return _doe_cache["data"]
         raise HTTPException(500, f"Proxy error: {str(e)}")
 
 @app.get("/")
