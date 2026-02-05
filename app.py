@@ -1,6 +1,7 @@
 import os
 import math
 import json
+import sqlite3
 import numpy as np
 import pandas as pd
 import httpx
@@ -11,8 +12,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from contextlib import asynccontextmanager
+from typing import Optional, List
+import threading
+import asyncio
 
 LOOKBACK = 48
 TARGETS = ["PM10_AGRABAD", "PM2.5_AGRABAD", "NOX_AGRABAD"]
@@ -32,6 +36,86 @@ OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 
 STATE_DIR = "state_store"
 os.makedirs(STATE_DIR, exist_ok=True)
+
+# SQLite Database for prediction history
+DB_PATH = "prediction_history.db"
+
+def init_database():
+    """Initialize SQLite database for storing prediction history"""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS prediction_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            station_id TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            aqi REAL,
+            pm25 REAL,
+            pm10 REAL,
+            nox REAL,
+            temp REAL,
+            humidity REAL,
+            wind_speed REAL,
+            lat REAL,
+            lng REAL,
+            UNIQUE(station_id, timestamp)
+        )
+    ''')
+    cursor.execute('CREATE INDEX IF NOT EXISTS idx_station_time ON prediction_history(station_id, timestamp)')
+    conn.commit()
+    conn.close()
+    print("Database initialized successfully!")
+
+def get_db_connection():
+    """Get a database connection"""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def store_prediction(station_id: str, data: dict):
+    """Store a prediction in the database"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('''
+            INSERT OR REPLACE INTO prediction_history 
+            (station_id, timestamp, aqi, pm25, pm10, nox, temp, humidity, wind_speed, lat, lng)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            station_id,
+            data.get('timestamp', datetime.now(timezone.utc).isoformat()),
+            data.get('aqi'),
+            data.get('pm25'),
+            data.get('pm10'),
+            data.get('nox'),
+            data.get('temp'),
+            data.get('humidity'),
+            data.get('wind_speed'),
+            data.get('lat'),
+            data.get('lng')
+        ))
+        conn.commit()
+    except Exception as e:
+        print(f"Error storing prediction: {e}")
+    finally:
+        conn.close()
+
+def get_prediction_history(station_id: str, hours: int = 24) -> list:
+    """Get prediction history for a station for the last N hours"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cutoff_time = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
+    
+    cursor.execute('''
+        SELECT * FROM prediction_history 
+        WHERE station_id = ? AND timestamp > ?
+        ORDER BY timestamp ASC
+    ''', (station_id, cutoff_time))
+    
+    rows = cursor.fetchall()
+    conn.close()
+    
+    return [dict(row) for row in rows]
 
 # Lazy load model and scalers
 _model = None
@@ -85,8 +169,23 @@ def get_aqi_category(aqi: float) -> str:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Load model on startup and cleanup on shutdown"""
+    # Initialize database
+    init_database()
+    
+    # Load models
     get_model()
+    
+    # Start background data collection task
+    task = asyncio.create_task(hourly_data_collector())
+    
     yield
+    
+    # Cleanup: cancel background task
+    task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
 
 app = FastAPI(title="AQ Forecast API (Open-Meteo)", lifespan=lifespan)
 
@@ -390,15 +489,105 @@ async def predict(req: PredictRequest):
             raise HTTPException(404, f"Location '{req.place_id}' not found. Please check the spelling and try again.")
         raise
 
+# Stations to collect data for hourly
+MONITORED_STATIONS = {
+    "CUET": {"lat": 22.4624, "lng": 91.9710, "name": "CUET"},
+    "CDA_AGRABAD": {"lat": 22.3236, "lng": 91.8144, "name": "Agrabad"},
+    "BARC": {"lat": 23.7806, "lng": 90.2792, "name": "Dhaka BARC"},
+    "DOE": {"lat": 23.7287, "lng": 90.3854, "name": "Dhaka DoE"},
+}
+
+async def collect_station_data():
+    """Collect prediction data for all monitored stations"""
+    print(f"[{datetime.now()}] Collecting hourly station data...")
+    for station_id, station_info in MONITORED_STATIONS.items():
+        try:
+            lat = station_info["lat"]
+            lng = station_info["lng"]
+            ts = now_utc_hour()
+            
+            weather_json = await fetch_current_weather(lat, lng)
+            met = extract_met_inputs(weather_json)
+            X_in = build_model_input(station_id, ts, met)
+            pred = predict_from_model(X_in)
+            aqi = predict_aqi(ts, pred)
+            
+            # Store in database
+            store_prediction(station_id, {
+                "timestamp": ts.isoformat(),
+                "aqi": aqi,
+                "pm25": pred.get("PM2.5_AGRABAD"),
+                "pm10": pred.get("PM10_AGRABAD"),
+                "nox": pred.get("NOX_AGRABAD"),
+                "temp": met.get("Temp_AGRABAD"),
+                "humidity": met.get("RH_AGRABAD"),
+                "wind_speed": met.get("WS_AGRABAD"),
+                "lat": lat,
+                "lng": lng
+            })
+            print(f"  Stored data for {station_id}: AQI={aqi:.1f}")
+        except Exception as e:
+            print(f"  Error collecting data for {station_id}: {e}")
+
+async def hourly_data_collector():
+    """Background task to collect data every hour"""
+    while True:
+        await collect_station_data()
+        # Wait for 1 hour
+        await asyncio.sleep(3600)
+
+@app.get("/api/history/{station_id}")
+async def get_history(station_id: str, hours: int = 24):
+    """Get prediction history for a station"""
+    history = get_prediction_history(station_id, hours)
+    return {
+        "station_id": station_id,
+        "hours": hours,
+        "count": len(history),
+        "data": history
+    }
+
+@app.get("/api/stations")
+async def get_stations():
+    """Get list of monitored stations"""
+    return MONITORED_STATIONS
+
+@app.post("/api/store")
+async def store_current_prediction(station_id: str, lat: float, lng: float):
+    """Manually trigger data collection for a station"""
+    try:
+        ts = now_utc_hour()
+        weather_json = await fetch_current_weather(lat, lng)
+        met = extract_met_inputs(weather_json)
+        X_in = build_model_input(station_id, ts, met)
+        pred = predict_from_model(X_in)
+        aqi = predict_aqi(ts, pred)
+        
+        store_prediction(station_id, {
+            "timestamp": ts.isoformat(),
+            "aqi": aqi,
+            "pm25": pred.get("PM2.5_AGRABAD"),
+            "pm10": pred.get("PM10_AGRABAD"),
+            "nox": pred.get("NOX_AGRABAD"),
+            "temp": met.get("Temp_AGRABAD"),
+            "humidity": met.get("RH_AGRABAD"),
+            "wind_speed": met.get("WS_AGRABAD"),
+            "lat": lat,
+            "lng": lng
+        })
+        return {"status": "success", "station_id": station_id, "aqi": aqi}
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
 @app.get("/")
 async def root():
     """Serve the enhanced Chittagong map"""
-    return FileResponse("map_chittagong.html")
+    return FileResponse("map.html")
 
 @app.get("/map")
 async def map_view():
     """Serve the original map frontend"""
-    return FileResponse("map.html")
+    return FileResponse("map_chittagong.html")
 
 @app.get("/simple")
 async def simple():
