@@ -511,14 +511,14 @@
         position: absolute;
         bottom: 20px;
         right: 10px;
-        width: calc(20% - 10px);
-        height: calc(16.67% + 50px);
-        min-width: 180px;
-        min-height: 180px;
-        max-width: 250px;
-        max-height: 280px;
+        width: calc(30% - 15px);
+        height: calc(25% + 75px);
+        min-width: 270px;
+        min-height: 270px;
+        max-width: 375px;
+        max-height: 420px;
         background: white;
-        border-radius: 10px;
+        border-radius: 12px;
         box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         z-index: 1000;
         overflow: hidden;
@@ -529,69 +529,69 @@
       .cuet-panel-header {
         background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
         color: white;
-        padding: 8px 10px;
+        padding: 12px 15px;
         flex-shrink: 0;
       }
 
       .cuet-panel-header h4 {
-        font-size: 11px;
+        font-size: 16px;
         margin: 0;
         font-weight: 600;
       }
 
       .cuet-panel-header p {
-        font-size: 9px;
+        font-size: 13px;
         opacity: 0.9;
-        margin: 2px 0 0 0;
+        margin: 3px 0 0 0;
       }
 
       .cuet-panel-body {
-        padding: 8px;
+        padding: 12px;
         flex: 1;
         overflow-y: auto;
-        font-size: 10px;
+        font-size: 15px;
       }
 
       .cuet-aqi-display {
         text-align: center;
-        padding: 8px;
-        border-radius: 6px;
-        margin-bottom: 8px;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 12px;
         color: white;
       }
 
       .cuet-aqi-value {
-        font-size: 24px;
+        font-size: 36px;
         font-weight: 700;
         line-height: 1;
       }
 
       .cuet-aqi-label {
-        font-size: 9px;
+        font-size: 13px;
         opacity: 0.9;
       }
 
       .cuet-pollutants-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 4px;
-        margin-bottom: 8px;
+        gap: 6px;
+        margin-bottom: 12px;
       }
 
       .cuet-pollutant-item {
         background: #f8f9fa;
-        padding: 5px;
-        border-radius: 4px;
+        padding: 8px;
+        border-radius: 6px;
         text-align: center;
       }
 
       .cuet-pollutant-item .label {
-        font-size: 8px;
+        font-size: 12px;
         color: #666;
       }
 
       .cuet-pollutant-item .value {
-        font-size: 11px;
+        font-size: 16px;
         font-weight: 700;
         color: #2c3e50;
       }
@@ -599,23 +599,23 @@
       .cuet-weather-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
-        gap: 4px;
-        padding-top: 6px;
+        gap: 6px;
+        padding-top: 9px;
         border-top: 1px solid #e9ecef;
       }
 
       .cuet-weather-item {
         text-align: center;
-        padding: 3px;
+        padding: 5px;
       }
 
       .cuet-weather-item .label {
-        font-size: 8px;
+        font-size: 12px;
         color: #666;
       }
 
       .cuet-weather-item .value {
-        font-size: 10px;
+        font-size: 15px;
         font-weight: 600;
         color: #2c3e50;
       }
@@ -628,16 +628,149 @@
 
         .left-panel {
           width: 100%;
-          height: 50%;
+          height: 60%;
+          max-height: 60vh;
         }
 
         #map {
           width: 100%;
-          height: 50%;
+          height: 40%;
+          min-height: 40vh;
         }
 
         .aqi-comparison {
           grid-template-columns: 1fr;
+        }
+      }
+
+      /* Phone-specific responsiveness */
+      @media (max-width: 600px) {
+        .container {
+          flex-direction: column-reverse;
+        }
+
+        .left-panel {
+          width: 100%;
+          height: 70%;
+          max-height: 70vh;
+          overflow-y: auto;
+        }
+
+        #map {
+          width: 100%;
+          height: 30%;
+          min-height: 30vh;
+        }
+
+        .panel-header {
+          padding: 10px 15px;
+        }
+
+        .panel-header h1 {
+          font-size: 1.1em;
+        }
+
+        .panel-header p {
+          font-size: 0.75em;
+        }
+
+        .search-section {
+          padding: 10px;
+        }
+
+        .content-area {
+          padding: 10px;
+        }
+
+        .aqi-comparison {
+          grid-template-columns: 1fr;
+          gap: 10px;
+        }
+
+        .aqi-card {
+          padding: 12px;
+        }
+
+        .aqi-value {
+          font-size: 1.8em;
+        }
+
+        /* CUET panel - keep original size on phone */
+        .cuet-fixed-panel {
+          width: calc(20% - 10px);
+          height: calc(16.67% + 50px);
+          min-width: 180px;
+          min-height: 180px;
+          max-width: 250px;
+          max-height: 280px;
+          border-radius: 10px;
+        }
+
+        .cuet-panel-header {
+          padding: 8px 10px;
+        }
+
+        .cuet-panel-header h4 {
+          font-size: 11px;
+        }
+
+        .cuet-panel-header p {
+          font-size: 9px;
+          margin: 2px 0 0 0;
+        }
+
+        .cuet-panel-body {
+          padding: 8px;
+          font-size: 10px;
+        }
+
+        .cuet-aqi-display {
+          padding: 8px;
+          border-radius: 6px;
+          margin-bottom: 8px;
+        }
+
+        .cuet-aqi-value {
+          font-size: 24px;
+        }
+
+        .cuet-aqi-label {
+          font-size: 9px;
+        }
+
+        .cuet-pollutants-grid {
+          gap: 4px;
+          margin-bottom: 8px;
+        }
+
+        .cuet-pollutant-item {
+          padding: 5px;
+          border-radius: 4px;
+        }
+
+        .cuet-pollutant-item .label {
+          font-size: 8px;
+        }
+
+        .cuet-pollutant-item .value {
+          font-size: 11px;
+        }
+
+        .cuet-weather-grid {
+          gap: 4px;
+          padding-top: 6px;
+        }
+
+        .cuet-weather-item {
+          padding: 3px;
+        }
+
+        .cuet-weather-item .label {
+          font-size: 8px;
+        }
+
+        .cuet-weather-item .value {
+          font-size: 10px;
         }
       }
 
