@@ -930,8 +930,8 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
       const API_URL = "";
-      const DOE_API_URL = "http://180.211.164.219:8080/aqiApi_v1/aqiApiController/markerAQIData/ABCDEFGHIJKLMNOPQdefghijklmnopqrstuvwxyz0123456789";
-      const DOE_DASHBOARD_URL = "http://180.211.164.219:85";
+      const DOE_API_URL = `${API_URL}/api/doe-stations`;  // Use proxy to avoid mixed content
+      const DOE_DASHBOARD_URL = "https://case.doe.gov.bd";  // Use HTTPS dashboard URL
       const CUET_COORDS = { lat: 22.4624, lng: 91.9710, name: "CUET" };
       const AGRABAD_COORDS = { lat: 22.3236, lng: 91.8144, name: "Agrabad" };
       

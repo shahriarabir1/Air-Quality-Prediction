@@ -579,6 +579,24 @@ async def store_current_prediction(station_id: str, lat: float, lng: float):
     except Exception as e:
         raise HTTPException(500, str(e))
 
+# DOE API Proxy to avoid mixed content issues (HTTPS -> HTTP)
+DOE_API_URL = "http://180.211.164.219:8080/aqiApi_v1/aqiApiController/markerAQIData/ABCDEFGHIJKLMNOPQdefghijklmnopqrstuvwxyz0123456789"
+
+@app.get("/api/doe-stations")
+async def proxy_doe_stations():
+    """Proxy endpoint for DOE AQI API to avoid mixed content issues"""
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(DOE_API_URL)
+            response.raise_for_status()
+            return response.json()
+    except httpx.TimeoutException:
+        raise HTTPException(504, "DOE API request timed out")
+    except httpx.HTTPError as e:
+        raise HTTPException(502, f"DOE API error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(500, f"Proxy error: {str(e)}")
+
 @app.get("/")
 async def root():
     """Serve the enhanced Chittagong map"""
