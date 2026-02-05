@@ -888,7 +888,77 @@
               </div>
             </div>
 
-            <!-- DoE Real-time Data -->
+            <div class="info-section">
+              <h3>💨 Pollutant Levels</h3>
+              <div class="pollutant-list">
+                <div class="pollutant-item">
+                  <span class="name">PM 10</span>
+                  <span class="value" id="pollutantPM10">--</span>
+                </div>
+                <div class="pollutant-item">
+                  <span class="name">PM 2.5</span>
+                  <span class="value" id="pollutantPM25">--</span>
+                </div>
+                <div class="pollutant-item">
+                  <span class="name">NOx</span>
+                  <span class="value" id="pollutantNOx">--</span>
+                </div>
+              </div>
+            </div>
+           
+            <div class="info-section">
+              <h3>🌤️ Weather Conditions</h3>
+              <div class="data-grid">
+                <div class="data-item">
+                  <div class="label">Temperature</div>
+                  <div class="value" id="weatherTemp">--</div>
+                </div>
+                <div class="data-item">
+                  <div class="label">Humidity</div>
+                  <div class="value" id="weatherHumidity">--</div>
+                </div>
+                <div class="data-item">
+                  <div class="label">Wind Speed</div>
+                  <div class="value" id="weatherWind">--</div>
+                </div>
+                <div class="data-item">
+                  <div class="label">Rain</div>
+                  <div class="value" id="weatherRain">--</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Real-time Graph -->
+            <div class="graph-section">
+              <h3>📈 Prediction History (Last 24 Hours)</h3>
+              <div class="chart-container">
+                <canvas id="aqiChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Individual Pollutant Charts -->
+            <div class="graph-section">
+              <h3>📊 PM2.5 Trend (24h)</h3>
+              <div class="chart-container" style="height: 150px;">
+                <canvas id="pm25Chart"></canvas>
+              </div>
+            </div>
+
+            <div class="graph-section">
+              <h3>📊 PM10 Trend (24h)</h3>
+              <div class="chart-container" style="height: 150px;">
+                <canvas id="pm10Chart"></canvas>
+              </div>
+            </div>
+
+            <div class="graph-section">
+              <h3>📊 NOx Trend (24h)</h3>
+              <div class="chart-container" style="height: 150px;">
+                <canvas id="noxChart"></canvas>
+              </div>
+            </div>
+
+             <!-- DoE Real-time Data -->
             <div class="doe-section" id="doeDataSection" style="display: none;">
               <h3>📊 DoE Station: <span id="doeStationName">--</span></h3>
               <div class="doe-grid">
@@ -929,79 +999,9 @@
                 🔗 View Full DoE Dashboard
               </a>
             </div>
-
-            <!-- Real-time Graph -->
-            <div class="graph-section">
-              <h3>📈 Prediction History (Last 24 Hours)</h3>
-              <div class="chart-container">
-                <canvas id="aqiChart"></canvas>
-              </div>
-            </div>
-
-            <!-- Individual Pollutant Charts -->
-            <div class="graph-section">
-              <h3>📊 PM2.5 Trend (24h)</h3>
-              <div class="chart-container" style="height: 150px;">
-                <canvas id="pm25Chart"></canvas>
-              </div>
-            </div>
-
-            <div class="graph-section">
-              <h3>📊 PM10 Trend (24h)</h3>
-              <div class="chart-container" style="height: 150px;">
-                <canvas id="pm10Chart"></canvas>
-              </div>
-            </div>
-
-            <div class="graph-section">
-              <h3>📊 NOx Trend (24h)</h3>
-              <div class="chart-container" style="height: 150px;">
-                <canvas id="noxChart"></canvas>
-              </div>
-            </div>
-
-            <div class="info-section">
-              <h3>🌤️ Weather Conditions</h3>
-              <div class="data-grid">
-                <div class="data-item">
-                  <div class="label">Temperature</div>
-                  <div class="value" id="weatherTemp">--</div>
-                </div>
-                <div class="data-item">
-                  <div class="label">Humidity</div>
-                  <div class="value" id="weatherHumidity">--</div>
-                </div>
-                <div class="data-item">
-                  <div class="label">Wind Speed</div>
-                  <div class="value" id="weatherWind">--</div>
-                </div>
-                <div class="data-item">
-                  <div class="label">Rain</div>
-                  <div class="value" id="weatherRain">--</div>
-                </div>
-              </div>
-            </div>
-
-            <div class="info-section">
-              <h3>💨 Pollutant Levels</h3>
-              <div class="pollutant-list">
-                <div class="pollutant-item">
-                  <span class="name">PM 10</span>
-                  <span class="value" id="pollutantPM10">--</span>
-                </div>
-                <div class="pollutant-item">
-                  <span class="name">PM 2.5</span>
-                  <span class="value" id="pollutantPM25">--</span>
-                </div>
-                <div class="pollutant-item">
-                  <span class="name">NOx</span>
-                  <span class="value" id="pollutantNOx">--</span>
-                </div>
-              </div>
-            </div>
-
             <div class="timestamp" id="timestamp"></div>
           </div>
+          
         </div>
       </div>
 
